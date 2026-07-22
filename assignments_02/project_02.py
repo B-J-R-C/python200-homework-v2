@@ -4,7 +4,7 @@ Author: Ben Chapman
 """
 
 # =============================================================================
-# CSV SEPARATOR NOTE (REQUIRED BY ASSIGNMENT):
+# CSV SEPARATOR NOTE:
 # The raw dataset 'student_performance_math.csv' uses semicolons (;) as column 
 # separators instead of standard commas. Therefore, we must explicitly pass 
 # sep=';' to pd.read_csv() so that pandas parses the dataset into separate columns 
@@ -74,7 +74,7 @@ print(f"Shape before filtering G3=0: {df.shape}")
 df_clean = df[df["G3"] > 0].copy()
 print(f"Shape after filtering G3=0: {df_clean.shape}")
 
-# COMMENT: Why keeping G3=0 distorts the model:
+# TASK 2 COMMENT: Why keeping G3=0 distorts the model:
 # Students with G3=0 were likely absent and missed the exam rather than scoring a true zero 
 # based on academic capability. Including them forces the model to try predicting absences 
 # as academic failure, distorting true educational relationships.
@@ -86,7 +86,7 @@ corr_after = df_clean["absences"].corr(df_clean["G3"])
 print(f"\nCorrelation (absences vs G3) BEFORE filtering: {corr_before:.4f}")
 print(f"Correlation (absences vs G3) AFTER filtering:  {corr_after:.4f}")
 
-# COMMENT: Why filtering changes the result:
+# TASK 2 COMMENT: Why filtering changes the result:
 # In the raw data, students absent for the final exam had high overall absences and scored 0. 
 # This created an artificially strong negative correlation. Removing exam dropouts reveals the 
 # true relationship among test-takers, where absences have a minimal correlation with score.
@@ -104,15 +104,16 @@ df_clean["sex"] = df_clean["sex"].map({"F": 0, "M": 1})
 # ==========================================
 print("\n--- TASK 3: Exploratory Data Analysis ---")
 
+# Calculate correlations on numeric columns, excluding G1, G2, and G3 from the printed feature list
 numeric_df = df_clean.select_dtypes(include=[np.number]).drop(
     columns=["G1", "G2"], errors="ignore"
 )
-correlations = numeric_df.corr()["G3"].sort_values()
+correlations = numeric_df.corr()["G3"].drop("G3").sort_values(ascending=True)
 
-print("Correlations with G3:")
-print(correlations.drop("G3"))
+print("Correlations with G3 (sorted from most negative to most positive):")
+print(correlations)
 
-# COMMENT: EDA Correlation Observations
+# TASK 3 COMMENT: Strongest relationship and surprises
 # The strongest negative predictor of G3 is past class 'failures'. Mother's education ('Medu') 
 # shows a strong positive correlation, whereas study time has a surprisingly weak correlation.
 
@@ -126,7 +127,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "medu_vs_g3.png"))
 plt.clf()
 
-# COMMENT ON PLOT 1 (Medu vs G3):
+# TASK 3 COMMENT ON PLOT 1 (Medu vs G3):
 # The boxplot shows a clear upward trend in median final math grade as mother's education level increases. 
 # Students whose mothers completed higher education (level 4) achieve notably higher median scores than those with lower levels.
 
@@ -147,7 +148,7 @@ plt.tight_layout()
 plt.savefig(os.path.join(OUTPUT_DIR, "failures_vs_g3.png"))
 plt.clf()
 
-# COMMENT ON PLOT 2 (Failures vs G3):
+# TASK 3 COMMENT ON PLOT 2 (Failures vs G3):
 # The plot illustrates that students with 0 past class failures span the full range of grades including top scores. 
 # As past failures increase to 1, 2, or 3, the ceiling for final grades drops sharply, showing past academic struggle is a strong upper bound on performance.
 
@@ -177,9 +178,10 @@ print(f"Slope (failures): {model_base.coef_[0]:.2f}")
 print(f"RMSE: {rmse_base:.2f}")
 print(f"Test R-squared: {r2_base:.4f}")
 
-# COMMENT: Baseline Model Interpretation
-# A slope of ~ -1.45 indicates each past class failure lowers expected final grade by ~1.45 points on a 20-point scale. 
-# An RMSE of ~3.0 means predictions are off by about 3 points on average.
+# TASK 4 COMMENT: Baseline Model Slope Interpretation
+# In plain English, a slope of ~ -1.45 means that for every additional past class failure on a student's record, 
+# their expected final math grade drops by 1.45 points on a 0-20 scale. 
+# An RMSE of ~3.0 means our predictions miss actual scores by roughly 3 points on average.
 
 
 # ==========================================
@@ -229,10 +231,12 @@ print("Feature Coefficients:")
 for name, coef in zip(feature_cols, model_full.coef_):
     print(f"{name:12s}: {coef:+.3f}")
 
-# COMMENT: Full Model Interpretation
-# The full 15-feature model improves test R-squared over the baseline. 
-# Train and test R-squared values are comparable, showing minimal overfitting.
-# 'schoolsup' has a negative coefficient because remedial support is assigned to struggling students (remedial selection bias).
+# TASK 5 COMMENT: Full Model Comparison Discussion
+# 1. Any surprising signs? Yes, 'schoolsup' (extra educational support) has a negative coefficient (~ -0.89). 
+#    This is counterintuitive but occurs because remedial support is assigned to struggling students (remedial selection bias).
+# 2. Are train and test R-squared close? Yes, Train R-squared (~0.21) and Test R-squared (~0.16) are very close to each other.
+# 3. What does that mean about the model? Because train and test R-squared are close, it means the model is NOT overfitting 
+#    the training data and generalizes reasonably well to unseen student records.
 
 
 # ==========================================
@@ -265,14 +269,14 @@ print(f"Saved {os.path.join(OUTPUT_DIR, 'predicted_vs_actual.png')}")
 
 
 # =============================================================================
-# TASK 6 REQUIRED PLAIN-LANGUAGE SUMMARY (IN COMMENTS):
+# TASK 6 REQUIRED PLAIN-LANGUAGE SUMMARY IN COMMENTS:
 #
 # 1. FILTERED DATASET SIZE:
 #    The filtered dataset contains 357 student records after removing 38 rows 
 #    where G3 = 0 (students who were absent for the final exam).
 #
 # 2. TEST SET SIZE:
-#    The test set evaluated 72 students (20% test split from train_test_split).
+#    The test set evaluated 72 students (a 20% test split from train_test_split).
 #
 # 3. RMSE AND R-SQUARED INTERPRETATION OF BEST MODEL:
 #    - RMSE: ~2.90 points on a 0-20 grade scale, meaning predictions miss actual scores by ~3 points on average.
@@ -285,7 +289,7 @@ print(f"Saved {os.path.join(OUTPUT_DIR, 'predicted_vs_actual.png')}")
 #
 # 5. TWO LARGEST NEGATIVE COEFFICIENTS:
 #    - 'failures' (-1.303): Each past class failure reduces expected final grade by ~1.3 points.
-#    - 'schoolsup' (-0.893): Extra educational support displays a negative coefficient.
+#    - 'schoolsup' (-0.893): Extra educational support displays a negative coefficient due to remedial selection bias.
 #
 # 6. SURPRISING RESULT & DEPLOYMENT DISCUSSION:
 #    - Surprising Result: The negative coefficient on 'schoolsup' is counterintuitive at first glance. 
@@ -314,6 +318,6 @@ model_g1.fit(X_train_g1, y_train_g1)
 test_r2_g1 = model_g1.score(X_test_g1, y_test_g1)
 print(f"Test R-squared with G1 included: {test_r2_g1:.4f}")
 
-# COMMENT: The Power of G1
+# TASK 6 NEGLECTED FEATURE COMMENT: The Power of G1
 # Adding G1 drastically increases R-squared because first-period performance is a direct measure of math competence. 
 # However, for early intervention before the school year starts, educators must rely on pre-exam demographic/behavioral features.
