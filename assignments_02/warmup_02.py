@@ -1,16 +1,25 @@
 """
 Python 200: Assignment 02 - scikit-learn Warmups
+Author: Ben Chapman
 """
 
-import numpy as np
+import os
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+# Ensure outputs directory exists before saving any plots
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "outputs")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-# scikit-learn Question 1: Linear Regression
-
+# ==========================================
+# --- SCIKIT-LEARN QUESTION 1 ---
+# ==========================================
 print("--- Scikit-Learn Q1 Output ---")
 
 # 1. Prep Data
@@ -20,10 +29,10 @@ salary = np.array([45000, 50000, 60000, 75000, 90000, 120000])
 # 2. Create model
 lin_reg = LinearRegression()
 
-# 3. FIT model to training data
+# 3. Fit model
 lin_reg.fit(years, salary)
 
-# 4. PREDICT on new data
+# 4. Predict
 X_new = np.array([[4], [8]])
 predictions = lin_reg.predict(X_new)
 
@@ -34,92 +43,69 @@ print(f"Predicted salary for 4 years: ${predictions[0]:,.2f}")
 print(f"Predicted salary for 8 years: ${predictions[1]:,.2f}\n")
 
 
-
-# scikit-learn Question 2: Reshaping 1D to 2D
-
+# ==========================================
+# --- SCIKIT-LEARN QUESTION 2 ---
+# ==========================================
 print("--- Scikit-Learn Q2 Output ---")
 
 x = np.array([10, 20, 30, 40, 50])
 print(f"Original 1D shape: {x.shape}")
 
-# Reshape using -1 (which means "figure out the number of rows automatically")
-# and 1 (which means "give me exactly 1 column").
 x_2d = x.reshape(-1, 1)
 print(f"New 2D shape: {x_2d.shape}\n")
 
-"""
-COMMENT: Why does scikit-learn need X to be 2D?
-Scikit-learn always expects data in a standard "spreadsheet" format, where 
-rows represent individual samples (data points) and columns represent features 
-(variables). A 1D array is ambiguous—it could be 5 samples with 1 feature, 
-or 1 sample with 5 features.
-"""
+# COMMENT: Why does scikit-learn need X to be 2D?
+# Scikit-learn expects data in a 2D matrix where rows represent samples and 
+# columns represent features. A 1D array is ambiguous because Git/Python cannot 
+# distinguish between a single feature with N rows vs N features with 1 row.
 
 
-
-# scikit-learn Question 3: K-Means Clustering
-
+# ==========================================
+# --- SCIKIT-LEARN QUESTION 3 ---
+# ==========================================
 print("--- Scikit-Learn Q3 Output ---")
 
-# 1. Prep Synthetic Data
 X_clusters, _ = make_blobs(n_samples=120, centers=3, cluster_std=0.8, random_state=7)
 
-# 2.
 kmeans = KMeans(n_clusters=3, random_state=42)
-
-# 3. fit+ predict
 labels = kmeans.fit_predict(X_clusters)
 
-# Output results
 print("Cluster Centers:")
 print(kmeans.cluster_centers_)
 
 counts = np.bincount(labels)
 print(f"\nPoints per cluster: {counts}")
 
-# 4. plot
 plt.figure(figsize=(8, 6))
-
-# all points, colored per cluster
-plt.scatter(X_clusters[:, 0], X_clusters[:, 1], c=labels, cmap='viridis', alpha=0.7)
-
-# center coordinates
+plt.scatter(X_clusters[:, 0], X_clusters[:, 1], c=labels, cmap="viridis", alpha=0.7)
 plt.scatter(
-    kmeans.cluster_centers_[:, 0], 
-    kmeans.cluster_centers_[:, 1], 
-    c='black', 
-    marker='X', 
-    s=200, 
-    label='Centers'
+    kmeans.cluster_centers_[:, 0],
+    kmeans.cluster_centers_[:, 1],
+    c="black",
+    marker="X",
+    s=200,
+    label="Centers",
 )
-
-plt.title('K-Means Clustering (k=3)')
-plt.xlabel('Feature 1')
-plt.ylabel('Feature 2')
+plt.title("K-Means Clustering (k=3)")
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
 plt.legend()
 plt.tight_layout()
-
-# Save
-plt.savefig('outputs/kmeans_clusters.png')
-plt.clf() # Clear figure so it doesn't overlap with future plots!
-
-print("Saved cluster plot to outputs/kmeans_clusters.png")
+plt.savefig(os.path.join(OUTPUT_DIR, "kmeans_clusters.png"))
+plt.clf()
+print(f"Saved cluster plot to {os.path.join(OUTPUT_DIR, 'kmeans_clusters.png')}")
 
 
-# Linear Regression Setup
-
-from sklearn.model_selection import train_test_split
+# ==========================================
+# --- LINEAR REGRESSION QUESTION 1 ---
+# ==========================================
+print("\n--- Linear Regression Q1 Output ---")
 
 np.random.seed(42)
 num_patients = 100
-age    = np.random.randint(20, 65, num_patients).astype(float)
+age = np.random.randint(20, 65, num_patients).astype(float)
 smoker = np.random.randint(0, 2, num_patients).astype(float)
-cost   = 200 * age + 15000 * smoker + np.random.normal(0, 3000, num_patients)
-
-
-# Linear Regression Q1: Data Exploration
-
-print("\n--- Linear Regression Q1 Output ---")
+cost = 200 * age + 15000 * smoker + np.random.normal(0, 3000, num_patients)
 
 plt.figure(figsize=(8, 6))
 plt.scatter(age, cost, c=smoker, cmap="coolwarm", alpha=0.8, edgecolors="k")
@@ -127,24 +113,21 @@ plt.title("Medical Cost vs Age")
 plt.xlabel("Age")
 plt.ylabel("Annual Medical Cost")
 plt.tight_layout()
-plt.savefig("outputs/cost_vs_age.png")
+plt.savefig(os.path.join(OUTPUT_DIR, "cost_vs_age.png"))
 plt.clf()
-print("Saved outputs/cost_vs_age.png")
+print(f"Saved {os.path.join(OUTPUT_DIR, 'cost_vs_age.png')}")
 
-"""
-COMMENT: Are there two distinct groups visible? What does that suggest?
-There are two distinct, parallel "bands" of data points. 
-Red band represents the smokers, and the lower blue band represents 
-the non-smokers. This suggests that the 'smoker' variable is a big predictor of medical costs, adding a large flat premium on top of the gradual 
-increase caused by age.
-"""
+# COMMENT: Are there two distinct groups visible?
+# Yes, two distinct parallel bands of data points appear. The upper red band represents 
+# smokers, while the lower blue band represents non-smokers, showing that smoking 
+# adds a large fixed cost overlaying the age trend.
 
 
-# Linear Regression Q2: Train/Test Split
-
+# ==========================================
+# --- LINEAR REGRESSION QUESTION 2 ---
+# ==========================================
 print("\n--- Linear Regression Q2 Output ---")
 
-# Age to 2D
 X_age = age.reshape(-1, 1)
 y = cost
 
@@ -158,18 +141,15 @@ print(f"y_train shape: {y_train.shape}")
 print(f"y_test shape:  {y_test.shape}")
 
 
-
-# Linear Regression Q3: Single Feature Model
-
+# ==========================================
+# --- LINEAR REGRESSION QUESTION 3 ---
+# ==========================================
 print("\n--- Linear Regression Q3 Output ---")
 
 model_age = LinearRegression()
 model_age.fit(X_train_age, y_train)
 
-# Predict
 y_pred_age = model_age.predict(X_test_age)
-
-# Calculate metrics
 rmse_age = np.sqrt(np.mean((y_pred_age - y_test) ** 2))
 r2_age = model_age.score(X_test_age, y_test)
 
@@ -178,76 +158,57 @@ print(f"Intercept:   {model_age.intercept_:.2f}")
 print(f"RMSE:        {rmse_age:.2f}")
 print(f"R-squared:   {r2_age:.4f}")
 
-"""
-COMMENT: What does the slope mean in plain English?
-It represents the estimated increase in annual medical costs for 
-each additional year of life. Based on this single-feature model, every 
-year older a patient gets, their expected medical cost increases by that 
-slope amount.
-"""
+# COMMENT: What does the slope mean in plain English?
+# The slope represents the estimated increase in annual medical costs for 
+# each additional year of age.
 
 
-# Linear Regression Q4: Multiple Features
-
+# ==========================================
+# --- LINEAR REGRESSION QUESTION 4 ---
+# ==========================================
 print("\n--- Linear Regression Q4 Output ---")
 
-# Combine age and smoker
 X_full = np.column_stack([age, smoker])
-
-# Split
 X_train_full, X_test_full, y_train_full, y_test_full = train_test_split(
     X_full, y, test_size=0.2, random_state=42
 )
 
-# Fit
 model_full = LinearRegression()
 model_full.fit(X_train_full, y_train_full)
-
-# Predict
 r2_full = model_full.score(X_test_full, y_test_full)
 
 print(f"R-squared (Age + Smoker): {r2_full:.4f}")
 print(f"Age coefficient:    {model_full.coef_[0]:.2f}")
 print(f"Smoker coefficient: {model_full.coef_[1]:.2f}")
 
-"""
-COMMENT: Does adding the smoker flag help? What does its coefficient mean?
-Smoker flag causes the R-squared value to jump significantly 
-(closer to 1.0), meaning the model explains much more of the variance in the data.
-The smoker coefficient represents the added cost of being a smoker. 
-It means a smoker's annual medical cost is estimated to be 
-that exact coefficient amount higher than a non-smoker of the exact same age.
-"""
+# COMMENT: Does adding the smoker flag help?
+# Yes, adding the smoker flag significantly increases R-squared toward 1.0, 
+# capturing the large medical cost difference attributable to smoking status.
 
 
-# Linear Regression Q5: Predicted vs Actual Plot
-
+# ==========================================
+# --- LINEAR REGRESSION QUESTION 5 ---
+# ==========================================
 print("\n--- Linear Regression Q5 Output ---")
 
-# Generate
 y_pred_full = model_full.predict(X_test_full)
 
 plt.figure(figsize=(8, 6))
 plt.scatter(y_pred_full, y_test_full, alpha=0.7, edgecolors="k", color="mediumseagreen")
 
-# Create
 min_val = min(min(y_pred_full), min(y_test_full))
 max_val = max(max(y_pred_full), max(y_test_full))
-plt.plot([min_val, max_val], [min_val, max_val], 'k--', lw=2, label="Perfect Prediction")
+plt.plot([min_val, max_val], [min_val, max_val], "k--", lw=2, label="Perfect Prediction")
 
 plt.title("Predicted vs Actual Medical Costs")
 plt.xlabel("Predicted Cost")
 plt.ylabel("Actual Cost")
 plt.legend()
 plt.tight_layout()
-plt.savefig("outputs/predicted_vs_actual.png")
+plt.savefig(os.path.join(OUTPUT_DIR, "predicted_vs_actual.png"))
 plt.clf()
-print("Saved outputs/predicted_vs_actual.png")
+print(f"Saved {os.path.join(OUTPUT_DIR, 'predicted_vs_actual.png')}")
 
-"""
-COMMENT: What does it mean when a point falls above or below the diagonal?
-A point ABOVE the diagonal means the actual cost on the y-axis was higher 
-than what the model predicted on the x-axis (the model under-predicted). 
-A point BELOW the diagonal means the actual cost was lower than what the 
-model predicted (the model over-predicted).
-"""
+# COMMENT: What does it mean when a point falls above or below the diagonal?
+# Points above the line represent under-predictions (actual cost was higher than predicted). 
+# Points below the line represent over-predictions (actual cost was lower than predicted).
