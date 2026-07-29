@@ -9,21 +9,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
+    ConfusionMatrixDisplay,
     accuracy_score,
     classification_report,
     confusion_matrix,
-    ConfusionMatrixDisplay
 )
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 # Ensure outputs directory exists relative to script location
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +53,7 @@ if DATA_PATH is None:
     except Exception as e:
         print(f"Download failed: {e}")
 
-# Column names from Spambase documentation
+# Exact Spambase column names (with char_freq_! named literally as requested)
 column_names = [
     "word_freq_make", "word_freq_address", "word_freq_all", "word_freq_3d", "word_freq_our",
     "word_freq_over", "word_freq_remove", "word_freq_internet", "word_freq_order", "word_freq_mail",
@@ -66,7 +65,7 @@ column_names = [
     "word_freq_technology", "word_freq_1999", "word_freq_parts", "word_freq_pm", "word_freq_direct",
     "word_freq_cs", "word_freq_meeting", "word_freq_original", "word_freq_project", "word_freq_re",
     "word_freq_edu", "word_freq_table", "word_freq_conference", "char_freq_semicolon", "char_freq_left_paren",
-    "char_freq_bracket", "char_freq_exclamation", "char_freq_dollar", "char_freq_hash",
+    "char_freq_bracket", "char_freq_!", "char_freq_dollar", "char_freq_hash",
     "capital_run_length_average", "capital_run_length_longest", "capital_run_length_total", "spam_label"
 ]
 
@@ -87,8 +86,8 @@ print(f"Spam (1):     {spam_counts[1]} ({spam_counts[1]/num_emails:.2%})")
 # TASK 1 COMMENT ON CLASS BALANCE:
 # The dataset consists of 4,601 emails, with ~60.6% non-spam and ~39.4% spam. Because it is moderately balanced (not 99% vs 1%), raw accuracy is a helpful metric, but precision and recall are still needed to catch false positive errors.
 
-# Boxplots for key features
-key_features = ["word_freq_free", "char_freq_exclamation", "capital_run_length_total"]
+# Boxplots for exact requested features
+key_features = ["word_freq_free", "char_freq_!", "capital_run_length_total"]
 for feat in key_features:
     plt.figure(figsize=(6, 4))
     sns.boxplot(x="spam_label", y=feat, data=df, palette="Set2")
@@ -98,9 +97,9 @@ for feat in key_features:
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, f"{feat}_boxplot.png"))
     plt.clf()
-print("Saved feature boxplots to outputs/")
+print("Saved requested feature boxplots to outputs/")
 
-# TASK 1 COMMENT ON FEATURE SKEL AND SCALE:
+# TASK 1 COMMENT ON FEATURE SKEW AND SCALE:
 # Most word frequencies are zero for almost all emails because typical emails only contain a tiny subset of vocabulary. 
 # Scales vary wildly: word frequencies are percentages (0-100), while capital run lengths reach into the thousands. Distance-based models (KNN) and gradient/regularized models (Logistic Regression) will be heavily distorted without scaling.
 
@@ -136,10 +135,11 @@ plt.xlabel("Number of Components")
 plt.ylabel("Explained Variance")
 plt.legend()
 plt.tight_layout()
-plt.savefig(os.path.join(OUTPUT_DIR, "spambase_pca_variance.png"))
+plt.savefig(os.path.join(OUTPUT_DIR, "pca_cumulative_variance.png"))
 plt.clf()
 
 print(f"Components needed for 90% variance: {n_components_90}")
+print(f"Saved PCA variance chart to {os.path.join(OUTPUT_DIR, 'pca_cumulative_variance.png')}")
 
 X_train_pca = pca.transform(X_train_scaled)[:, :n_components_90]
 X_test_pca = pca.transform(X_test_scaled)[:, :n_components_90]
@@ -156,6 +156,7 @@ knn_unscaled.fit(X_train, y_train)
 y_pred_knn_un = knn_unscaled.predict(X_test)
 print("1. KNN (Unscaled):")
 print(f"Accuracy: {accuracy_score(y_test, y_pred_knn_un):.4f}")
+print("Classification Report:")
 print(classification_report(y_test, y_pred_knn_un))
 
 # 2. KNN Scaled vs PCA
@@ -164,12 +165,16 @@ knn_scaled.fit(X_train_scaled, y_train)
 y_pred_knn_sc = knn_scaled.predict(X_test_scaled)
 print("2a. KNN (Scaled):")
 print(f"Accuracy: {accuracy_score(y_test, y_pred_knn_sc):.4f}")
+print("Classification Report:")
+print(classification_report(y_test, y_pred_knn_sc))
 
 knn_pca = KNeighborsClassifier(n_neighbors=5)
 knn_pca.fit(X_train_pca, y_train)
 y_pred_knn_pca = knn_pca.predict(X_test_pca)
 print("2b. KNN (PCA Reduced):")
-print(f"Accuracy: {accuracy_score(y_test, y_pred_knn_pca):.4f}\n")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_knn_pca):.4f}")
+print("Classification Report:")
+print(classification_report(y_test, y_pred_knn_pca))
 
 # 3. Decision Tree max_depth exploration
 print("3. Decision Tree Depth Exploration:")
@@ -182,12 +187,15 @@ for d in depths:
     print(f"max_depth={str(d):4s} | Train Acc: {tr_acc:.4f} | Test Acc: {te_acc:.4f}")
 
 # TASK 3 COMMENT ON DT OVERFITTING & PRODUCTION DEPTH:
-# As depth increases to None, train accuracy hits 1.0 while test accuracy degrades, showing classic overfitting. I select max_depth=5 for production because it maximizes test accuracy (~0.916) while keeping the rule tree compact and generalizable.
+# As depth increases to None, train accuracy hits 1.0 while test accuracy degrades, showing classic overfitting. 
+# Production justification: I select max_depth=5 for production because it maximizes test generalization accuracy (~0.916) while keeping the decision rules compact and interpretable without overfitting.
 
 chosen_dt = DecisionTreeClassifier(max_depth=5, random_state=42)
 chosen_dt.fit(X_train, y_train)
 y_pred_dt = chosen_dt.predict(X_test)
-print("\nChosen Decision Tree (max_depth=5) Classification Report:")
+print("\n3b. Chosen Decision Tree (max_depth=5):")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_dt):.4f}")
+print("Classification Report:")
 print(classification_report(y_test, y_pred_dt))
 
 # 4. Random Forest
@@ -196,6 +204,7 @@ rf.fit(X_train, y_train)
 y_pred_rf = rf.predict(X_test)
 print("4. Random Forest:")
 print(f"Accuracy: {accuracy_score(y_test, y_pred_rf):.4f}")
+print("Classification Report:")
 print(classification_report(y_test, y_pred_rf))
 
 # 5. Logistic Regression Scaled vs PCA
@@ -204,12 +213,16 @@ lr_scaled.fit(X_train_scaled, y_train)
 y_pred_lr_sc = lr_scaled.predict(X_test_scaled)
 print("5a. Logistic Regression (Scaled):")
 print(f"Accuracy: {accuracy_score(y_test, y_pred_lr_sc):.4f}")
+print("Classification Report:")
+print(classification_report(y_test, y_pred_lr_sc))
 
 lr_pca = LogisticRegression(C=1.0, max_iter=1000, solver="liblinear", random_state=42)
 lr_pca.fit(X_train_pca, y_train)
 y_pred_lr_pca = lr_pca.predict(X_test_pca)
 print("5b. Logistic Regression (PCA Reduced):")
-print(f"Accuracy: {accuracy_score(y_test, y_pred_lr_pca):.4f}\n")
+print(f"Accuracy: {accuracy_score(y_test, y_pred_lr_pca):.4f}")
+print("Classification Report:")
+print(classification_report(y_test, y_pred_lr_pca))
 
 # Feature Importances comparison (DT vs RF)
 feature_names = column_names[:-1]
@@ -251,11 +264,12 @@ plt.clf()
 # ==========================================
 print("\n--- TASK 4: Cross-Validation ---")
 
+# Evaluate every single classifier variation tested in Task 3
 cv_models = {
     "KNN (Unscaled)": (knn_unscaled, X_train),
     "KNN (Scaled)": (knn_scaled, X_train_scaled),
     "KNN (PCA)": (knn_pca, X_train_pca),
-    "Decision Tree (d=5)": (chosen_dt, X_train),
+    "Decision Tree (max_depth=5)": (chosen_dt, X_train),
     "Random Forest": (rf, X_train),
     "Logistic Regression (Scaled)": (lr_scaled, X_train_scaled),
     "Logistic Regression (PCA)": (lr_pca, X_train_pca),
@@ -279,9 +293,10 @@ tree_pipeline = Pipeline([
     ("classifier", RandomForestClassifier(n_estimators=100, random_state=42))
 ])
 
-# Best non-tree model pipeline (Logistic Regression - needs scaling)
+# Best non-tree model pipeline (includes PCA step to mirror the dimensionality reduction experiments)
 nontree_pipeline = Pipeline([
     ("scaler", StandardScaler()),
+    ("pca", PCA(n_components=n_components_90)),
     ("classifier", LogisticRegression(C=1.0, max_iter=1000, solver="liblinear", random_state=42))
 ])
 
@@ -292,9 +307,9 @@ print(classification_report(y_test, y_pred_pipe_tree))
 
 nontree_pipeline.fit(X_train, y_train)
 y_pred_pipe_nontree = nontree_pipeline.predict(X_test)
-print("Non-Tree Pipeline (Scaled Logistic Regression) Classification Report:")
+print("Non-Tree Pipeline (Scaled + PCA Logistic Regression) Classification Report:")
 print(classification_report(y_test, y_pred_pipe_nontree))
 
 # TASK 5 COMMENT ON PIPELINES:
-# The pipelines do not have the same structure: the non-tree pipeline includes a StandardScaler step whereas the tree pipeline passes raw features directly.
+# The pipelines do not have the same structure: the non-tree pipeline includes a StandardScaler and PCA step, whereas the tree pipeline passes raw features directly.
 # The practical value of packaging models into a Pipeline is that all preprocessing and scaling transformations are self-contained. When deploying to production or sharing code, calling pipeline.predict(raw_data) automatically applies exact training transformations without risk of data leakage or manual step omission.

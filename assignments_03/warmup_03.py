@@ -4,22 +4,24 @@ Author: Ben Chapman
 """
 
 import os
-import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.datasets import load_iris, load_digits
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from sklearn.datasets import load_digits, load_iris
 from sklearn.decomposition import PCA
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import (
+    ConfusionMatrixDisplay,
     accuracy_score,
     classification_report,
     confusion_matrix,
-    ConfusionMatrixDisplay
 )
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 # Ensure outputs directory exists relative to script location
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -101,19 +103,14 @@ print(f"Standard Deviation: {cv_scores.std():.4f}")
 # Q4
 print("\n--- KNN Question 4 ---")
 k_vals = [1, 3, 5, 7, 9, 11, 13, 15]
-best_k = None
-best_score = 0
-
 for k in k_vals:
-    scores = cross_val_score(KNeighborsClassifier(n_neighbors=k), X_train, y_train, cv=5)
-    mean_s = scores.mean()
-    print(f"k={k:2d} | Mean CV Score: {mean_s:.4f}")
-    if mean_s > best_score:
-        best_score = mean_s
-        best_k = k
+    scores = cross_val_score(
+        KNeighborsClassifier(n_neighbors=k), X_train, y_train, cv=5
+    )
+    print(f"k={k:2d} | Mean CV Score: {scores.mean():.4f}")
 
-# COMMENT Q4: Chosen k
-# I would choose k=9 or k=11 because they achieve peak mean cross-validation accuracy (~0.9667) while providing a smooth decision boundary that guards against noisy outliers.
+# COMMENT Q4: Chosen k and tie-breaking justification
+# I would choose k=9. While k=9 and k=11 tie for the highest mean cross-validation accuracy (0.9667), k=9 is the better choice because a slightly smaller neighborhood captures finer local decision boundaries without oversmoothing, while remaining large enough to resist outlier noise.
 
 
 # ==========================================
@@ -168,10 +165,14 @@ for c in c_values:
     base_lr = LogisticRegression(C=c, max_iter=1000, solver="liblinear")
     ovr_model = OneVsRestClassifier(base_lr)
     ovr_model.fit(X_train_scaled, y_train)
-    
-    coef_list = [estimator.coef_ for estimator in ovr_model.estimators_]
-    total_coef_magnitude = np.abs(np.array(coef_list)).sum()
-    print(f"C = {c:6.2f} | Total Coefficient Magnitude: {total_coef_magnitude:.4f}")
+
+    # Attach .coef_ directly to the wrapped OneVsRestClassifier model so model.coef_ works literally
+    ovr_model.coef_ = np.vstack([estimator.coef_ for estimator in ovr_model.estimators_])
+
+    total_coef_magnitude = np.abs(ovr_model.coef_).sum()
+    print(
+        f"C = {c:6.2f} | Total Coefficient Magnitude: {total_coef_magnitude:.4f}"
+    )
 
 # COMMENT Q1: What happens as C increases?
 # As C increases, the total coefficient magnitude increases significantly (weaker regularization allows larger weight magnitudes). This shows regularization (small C) penalizes large coefficients to prevent overfitting.
@@ -183,9 +184,9 @@ for c in c_values:
 
 # Add setup data-loading block right before PCA
 digits = load_digits()
-X_digits = digits.data    # 1797 images, each flattened to 64 pixel values
+X_digits = digits.data  # 1797 images, each flattened to 64 pixel values
 y_digits = digits.target  # digit labels 0-9
-images   = digits.images  # same data shaped as 8x8 images for plotting
+images = digits.images  # same data shaped as 8x8 images for plotting
 
 
 # Q1
@@ -193,7 +194,8 @@ print("\n--- PCA Question 1 ---")
 print(f"X_digits shape: {X_digits.shape}")
 print(f"images shape:   {images.shape}")
 
-fig, axes = plt.subplots(1, 10, figsize=(12, 2.5))
+# Explicit 1-row, 10-column subplot layout
+fig, axes = plt.subplots(nrows=1, ncols=10, figsize=(12, 2.5))
 for i in range(10):
     sample_idx = np.where(y_digits == i)[0][0]
     axes[i].imshow(images[sample_idx], cmap="gray_r")
@@ -253,12 +255,16 @@ print(f"Components needed for 80% variance: ~{num_80}")
 # Q4
 print("\n--- PCA Question 4 ---")
 
+
 def reconstruct_digit(sample_idx, scores, pca, n_components):
     """Reconstruct one digit using the first n_components principal components."""
     reconstruction = pca.mean_.copy()
     for i in range(n_components):
-        reconstruction = reconstruction + scores[sample_idx, i] * pca.components_[i]
+        reconstruction = (
+            reconstruction + scores[sample_idx, i] * pca.components_[i]
+        )
     return reconstruction.reshape(8, 8)
+
 
 n_components_list = [2, 5, 15, 40]
 fig, axes = plt.subplots(5, 5, figsize=(10, 10))
