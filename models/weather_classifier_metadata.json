@@ -1,0 +1,20 @@
+{
+    "python_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+    "scikit_learn_version": "1.9.0",
+    "features": [
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "precipitation_sum",
+        "wind_speed_10m_max"
+    ],
+    "best_hyperparameters": {
+        "lr__C": 10.0
+    },
+    "test_auc": 0.6963993453355155,
+    "city": {
+        "name": "Atlanta, GA",
+        "latitude": 33.74,
+        "longitude": -84.38
+    },
+    "label_description": "1 if Tmax 10-28C, Tmin >= 2C, Precip < 2mm, Wind < 25km/h. 0 otherwise."
+}
