@@ -1,4 +1,5 @@
-# Video Link: https://drive.google.com/file/d/1DMiA8JjEqoCG4x0HgIGRXZLQv78ae6O7/view?usp=sharing 
+# Video Link: https://drive.google.com/file/d/1DMiA8JjEqoCG4x0HgIGRXZLQv78ae6O7/view?usp=sharing
+
 import os
 import json
 import joblib
@@ -132,7 +133,7 @@ print(f"\nTotal days classified as good for running: {total_good}\n")
 # One weaker summary felt a bit contradictory, calling it "not good for running" due to heat, even though the max temp was only around 20C. This happens because the LLM is blindly trusting the ML prediction without having hardcoded temperature rules.
 
 # --- Step 6: Reflect ---
-# If the classifier was trained on Charlotte data but is predicting on Atlanta data (from Week 9), the predictions should remain fairly accurate. Atlanta and Charlotte share very similar humid subtropical climates and geography, so the threshold for what constitutes a "good running day" (temperature/humidity/rain bounds) will largely generalize. Model drift would be a much bigger issue if we applied this Charlotte-trained model to a city like Phoenix or London. 
+# If the classifier was trained on Charlotte data but is predicting on data from a different city, the accuracy is inherently uncertain. Because the model was trained on one specific city's distribution, its performance may shift or degrade if the new city's weather patterns differ. In machine learning, this data distribution shift means we cannot guarantee accuracy without retraining or validating the model on the new region's data.
 # 
 # The LLM has zero ability to override the classifier in this architecture—it is purely additive downstream. The implications are that if the ML model is wrong, the LLM will confidently hallucinate an explanation trying to justify that incorrect prediction. 
 # 
