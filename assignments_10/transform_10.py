@@ -33,8 +33,16 @@ if not unprocessed_records:
 
 # --- Step 2: ML Transform ---
 print("Loading ML model and running predictions...")
-classifier = joblib.load("models/weather_classifier.pkl")
-with open("models/weather_classifier_metadata.json", "r") as f:
+
+# Get the exact folder where this script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Build the bulletproof paths
+model_path = os.path.join(script_dir, "models", "weather_classifier.pkl")
+meta_path = os.path.join(script_dir, "models", "weather_classifier_metadata.json")
+
+classifier = joblib.load(model_path)
+with open(meta_path, "r") as f:
     metadata = json.load(f)
 feature_cols = metadata["features"]
 
